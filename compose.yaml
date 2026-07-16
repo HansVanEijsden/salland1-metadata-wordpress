@@ -1,0 +1,30 @@
+services:
+  salland1-metadata-wordpress:
+    build: .
+    container_name: salland1-metadata-wordpress
+    environment:
+      - SOURCE_URL=https://www.salland1.nl/wp-json/metadata/v1/current
+      - FETCH_INTERVAL=60s
+      - JITTER=10s
+      - PORT=8080
+      - LOG_LEVEL=info
+    networks:
+      metanet:
+        ipv4_address: 172.21.0.91
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  metanet:
+    external: true
+    name: metanet
