@@ -1,6 +1,10 @@
 # Salland1 Metadata WordPress Service
 
+[![CI](https://github.com/HansVanEijsden/salland1-metadata-wordpress/actions/workflows/ci.yml/badge.svg)](https://github.com/HansVanEijsden/salland1-metadata-wordpress/actions/workflows/ci.yml)
+[![Security](https://github.com/HansVanEijsden/salland1-metadata-wordpress/actions/workflows/security.yml/badge.svg)](https://github.com/HansVanEijsden/salland1-metadata-wordpress/actions/workflows/security.yml)
+
 A lightweight HTTP service that fetches, caches, and transforms metadata from the Salland1 WordPress API.
+
 
 ## Features
 
