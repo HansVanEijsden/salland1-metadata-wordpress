@@ -48,9 +48,9 @@ func (f *Fetcher) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			// Add jitter (random between -jitter and +jitter)
-			jitterMs := time.Duration(rand.Int63n(int64(f.jitter.Milliseconds()*2))) - f.jitter
-			slog.Debug("Adding jitter", "jitter_ms", jitterMs.Milliseconds())
-			time.Sleep(jitterMs)
+			jitterDuration := time.Duration(rand.Int63n(int64(f.jitter.Milliseconds()*2))) - f.jitter
+			slog.Debug("Adding jitter", "jitter_ms", jitterDuration.Milliseconds())
+			time.Sleep(jitterDuration)
 			f.fetch()
 		}
 	}
