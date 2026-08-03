@@ -7,6 +7,7 @@ import (
 type Cache struct {
 	mu      sync.RWMutex
 	data    interface{}
+	excerpt string
 	valid   bool
 	hasData bool
 }
@@ -33,6 +34,20 @@ func (c *Cache) Get() (interface{}, bool) {
 		return nil, false
 	}
 	return c.data, true
+}
+
+// SetExcerpt stores the current programme excerpt (may be empty).
+func (c *Cache) SetExcerpt(excerpt string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.excerpt = excerpt
+}
+
+// GetExcerpt returns the current programme excerpt (may be empty).
+func (c *Cache) GetExcerpt() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.excerpt
 }
 
 func (c *Cache) IsValid() bool {

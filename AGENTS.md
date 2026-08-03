@@ -20,10 +20,10 @@ Standard library only. Module path: `salland1-metadata-wordpress`.
 
 - `cmd/server/main.go` — entrypoint; wires config, logger, cache, fetcher, handlers; graceful shutdown on SIGINT/SIGTERM.
 - `internal/config` — env-driven config via `config.Load()` (see env table in `README.md`).
-- `internal/fetcher` — background goroutine fetching the WordPress API on an interval with random jitter; tracks `HasSuccessfulFetch()`.
+- `internal/fetcher` — background goroutine fetching the WordPress API on an interval with random jitter; tracks `HasSuccessfulFetch()`; also follows the current show's `route` to fetch and cache the programme excerpt.
 - `internal/cache` — thread-safe in-memory cache (mutex-protected).
 - `internal/parser` — `Parse(data interface{})` safely navigates the raw JSON (`broadcast.current_show`, `broadcast.next_show`) into `ParsedData` with type-assertion-based defaulting (handles JSON numbers as float64/int).
-- `internal/handlers` — 7 plain-text endpoints + `/health` (see endpoint table in `README.md`).
+- `internal/handlers` — 8 plain-text endpoints + `/health` (see endpoint table in `README.md`).
 - `internal/logger` — `slog` JSON logging to stdout; `HTTPLogger` middleware.
 - `pkg/utils` — shared formatting helpers (`FormatHosts`, `FormatTime`).
 - `tests/parser_test.go` — table-driven tests for the parser and utils.

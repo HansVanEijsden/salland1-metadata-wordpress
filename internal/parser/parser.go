@@ -80,3 +80,57 @@ func Parse(data interface{}) ParsedData {
 
 	return result
 }
+
+// ParseRoute extracts the current show's route endpoint URL from the metadata
+// response (broadcast.current_show.show.route). The route points to the shows
+// endpoint that carries the programme excerpt. Returns "" when absent.
+func ParseRoute(data interface{}) string {
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	broadcast, ok := dataMap["broadcast"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	currentShow, ok := broadcast["current_show"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	show, ok := currentShow["show"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	if route, ok := show["route"].(string); ok {
+		return route
+	}
+	return ""
+}
+
+// ParseExcerpt extracts the programme excerpt (short programme description)
+// from the shows endpoint response (shows[0].excerpt). Returns "" when absent.
+func ParseExcerpt(data interface{}) string {
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	shows, ok := dataMap["shows"].([]interface{})
+	if !ok || len(shows) == 0 {
+		return ""
+	}
+
+	firstShow, ok := shows[0].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	if excerpt, ok := firstShow["excerpt"].(string); ok {
+		return excerpt
+	}
+	return ""
+}

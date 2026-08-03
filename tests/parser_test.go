@@ -125,3 +125,70 @@ func TestParseFullData(t *testing.T) {
 		t.Errorf("Expected FmRdsPtyn 'Test', got %v", result.FmRdsPtyn)
 	}
 }
+
+func TestParseRoute(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     interface{}
+		expected string
+	}{
+		{"Nil data", nil, ""},
+		{"Malformed data", "invalid", ""},
+		{"Missing route", map[string]interface{}{}, ""},
+		{
+			"Valid route",
+			map[string]interface{}{
+				"broadcast": map[string]interface{}{
+					"current_show": map[string]interface{}{
+						"show": map[string]interface{}{
+							"route": "https://www.salland1.nl/wp-json/radio/shows/?show=middag-in-de-stad",
+						},
+					},
+				},
+			},
+			"https://www.salland1.nl/wp-json/radio/shows/?show=middag-in-de-stad",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parser.ParseRoute(tt.data)
+			if result != tt.expected {
+				t.Errorf("ParseRoute(%v) = %v, want %v", tt.data, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseExcerpt(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     interface{}
+		expected string
+	}{
+		{"Nil data", nil, ""},
+		{"Malformed data", "invalid", ""},
+		{"Missing shows", map[string]interface{}{}, ""},
+		{"Empty shows", map[string]interface{}{"shows": []interface{}{}}, ""},
+		{
+			"Valid excerpt",
+			map[string]interface{}{
+				"shows": []interface{}{
+					map[string]interface{}{
+						"excerpt": "Muziek voor de middag in de stad",
+					},
+				},
+			},
+			"Muziek voor de middag in de stad",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parser.ParseExcerpt(tt.data)
+			if result != tt.expected {
+				t.Errorf("ParseExcerpt(%v) = %v, want %v", tt.data, result, tt.expected)
+			}
+		})
+	}
+}

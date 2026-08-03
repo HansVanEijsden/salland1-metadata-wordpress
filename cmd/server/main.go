@@ -53,6 +53,7 @@ func main() {
 	mux.HandleFunc("/radio-dab-programme", handlers.RadioDabProgramme)
 	mux.HandleFunc("/radio-tv-programme", handlers.RadioTvProgramme)
 	mux.HandleFunc("/radio-tv-host", handlers.RadioTvHost)
+	mux.HandleFunc("/radio-programme-excerpt", handlers.RadioProgrammeExcerpt)
 	mux.HandleFunc("/health", handlers.Health)
 
 	// Add logging middleware

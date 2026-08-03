@@ -185,3 +185,22 @@ func (h *Handlers) RadioTvHost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Write([]byte(hostStr))
 }
+
+// RadioProgrammeExcerpt serves the current programme excerpt (short programme
+// description), fetched from the current show's route endpoint.
+func (h *Handlers) RadioProgrammeExcerpt(w http.ResponseWriter, r *http.Request) {
+	// The excerpt is only meaningful once the main metadata is available.
+	if _, ok := h.getParsedData(); !ok {
+		http.Error(w, "No data available", http.StatusServiceUnavailable)
+		return
+	}
+
+	excerpt := h.cache.GetExcerpt()
+	if excerpt == "" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(excerpt))
+}

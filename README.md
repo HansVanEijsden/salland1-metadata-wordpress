@@ -10,7 +10,8 @@ A lightweight HTTP service that fetches, caches, and transforms metadata from th
 
 - Fetches data from WordPress API every minute with jitter
 - Caches data in memory
-- Exposes 7 endpoints for radio middleware
+- Exposes 8 endpoints for radio middleware
+- Also fetches the current programme excerpt from the current show's route endpoint
 - Robust error handling with graceful degradation
 - Health check endpoint
 - Comprehensive logging
@@ -37,6 +38,7 @@ The service is written in Go for its:
 | `/radio-dab-programme` | DAB programme information | Plain text |
 | `/radio-tv-programme` | TV programme name | Plain text |
 | `/radio-tv-host` | TV host information | Plain text |
+| `/radio-programme-excerpt` | Current programme excerpt (short description) | Plain text |
 | `/health` | Health check | JSON |
 
 ## Configuration
