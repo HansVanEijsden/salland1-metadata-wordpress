@@ -1,0 +1,8 @@
+# Build artifacts
+/server
+
+# Local Python virtual environments
+.venv/
+
+# macOS
+.DS_Store
