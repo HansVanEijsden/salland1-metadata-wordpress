@@ -11,6 +11,10 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "chore"
+    groups:
+      go-modules:
+        patterns:
+          - "*"
 
   # Docker updates
   - package-ecosystem: "docker"
@@ -23,6 +27,10 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "chore"
+    groups:
+      docker:
+        patterns:
+          - "*"
 
   # GitHub Actions updates
   - package-ecosystem: "github-actions"
@@ -35,3 +43,7 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "chore"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
