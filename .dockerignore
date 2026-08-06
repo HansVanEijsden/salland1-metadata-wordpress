@@ -1,0 +1,8 @@
+.git
+.github
+.gitattributes
+.gitignore
+AGENTS.md
+README.md
+compose.yaml
+tests
