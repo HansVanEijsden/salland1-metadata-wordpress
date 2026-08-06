@@ -15,6 +15,7 @@ A lightweight HTTP service that fetches, caches, and transforms metadata from th
 - Robust error handling with graceful degradation
 - Health check endpoint
 - Comprehensive logging
+- Optional cover-art resolver (`POST /cover-art`) with iTunes album art, special-song and show-avatar fallbacks
 - Docker ready
 
 ## Architecture
@@ -52,6 +53,16 @@ Environment variables:
 | `JITTER` | `10s` | Random jitter for fetch timing |
 | `PORT` | `8080` | HTTP server port |
 | `LOG_LEVEL` | `info` | Log level (debug/info/warn/error) |
+
+## Cover-art resolver
+
+Optional album-art resolver (replaces the legacy PHP scripts on cloud.hansvaneijsden.nl), enabled with `COVERART_ENABLED=true`. The metadata hub POSTs each track to `POST /cover-art`; the resolver picks album art and pushes it back to the hub's `radio-cover-art` dynamic input, which the hub serves via `/ws/radio-cover-website`. `GET /cover-art/current` returns the last resolved URL (debugging / polling input).
+
+Resolution order: **special song** (e.g. Sallandschijf, configurable) → **iTunes** (fuzzy match, ≥ 120s track) → **show avatar** (from the already-cached WordPress metadata) → **fallback image**.
+
+Anti-rate-limit protection: per-track cache (6h), minimum 2s between iTunes calls, and a 5m cooldown after 403/429/5xx errors.
+
+Relevant env vars (all prefixed `COVERART_`): `HUB_URL`, `HUB_INPUT`, `HUB_SECRET`, `FALLBACK_IMAGE`, `SPECIAL_TRIGGER`, `SPECIAL_URL`, `ITUNES_COUNTRY`, `ITUNES_LIMIT`, `CACHE_TTL`, `MIN_INTERVAL`, `ERROR_COOLDOWN`, `MIN_MUSIC_SECONDS`. See `AGENTS.md` for the full table.
 
 ## Building and Running
 

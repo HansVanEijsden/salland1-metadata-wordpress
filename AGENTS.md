@@ -24,6 +24,7 @@ Standard library only. Module path: `salland1-metadata-wordpress`.
 - `internal/cache` — thread-safe in-memory cache (mutex-protected).
 - `internal/parser` — `Parse(data interface{})` safely navigates the raw JSON (`broadcast.current_show`, `broadcast.next_show`) into `ParsedData` with type-assertion-based defaulting (handles JSON numbers as float64/int).
 - `internal/handlers` — 8 plain-text endpoints + `/health` (see endpoint table in `README.md`).
+- `internal/coverart` — optional album-art resolver (`POST /cover-art`); replaces the legacy PHP cover-art scripts. Off unless `COVERART_ENABLED=true`.
 - `internal/logger` — `slog` JSON logging to stdout; `HTTPLogger` middleware.
 - `pkg/utils` — shared formatting helpers (`FormatHosts`, `FormatTime`).
 - `tests/parser_test.go` — table-driven tests for the parser and utils.
@@ -38,6 +39,46 @@ Standard library only. Module path: `salland1-metadata-wordpress`.
 - **Stable HTTP contract**: endpoint paths and plain-text formats are consumed by external radio middleware — don't change response formats casually.
 - **JSON number handling**: Go's `encoding/json` unmarshals numbers as `float64`; parser explicitly handles int/float64 cases — keep this in mind when adding fields.
 - Go version is 1.26 (`go.mod`); CI pins `go-version: '1.26'`.
+
+## Cover-art resolver
+
+Optional album-art resolver that replaces the legacy PHP scripts on cloud.hansvaneijsden.nl.
+Disabled unless `COVERART_ENABLED=true`, so the metadata endpoints are unaffected during rollout.
+
+Flow: the metadata hub POSTs each track change to `/cover-art` (its `radio-cover-art-req` output) →
+the resolver picks album art → pushes the result back to the hub's `radio-cover-art` dynamic input →
+the hub serves it via `/ws/radio-cover-website`.
+
+Resolution order:
+1. Special song (e.g. Sallandschijf) when `COVERART_SPECIAL_TRIGGER` + `COVERART_SPECIAL_URL` are set and the title/text starts with the trigger.
+2. iTunes album art when the track has an artist and a duration ≥ `COVERART_MIN_MUSIC_SECONDS` (default 120).
+3. Current show avatar from the already-cached WordPress metadata (no extra HTTP call).
+4. `COVERART_FALLBACK_IMAGE` placeholder.
+
+Anti-rate-limit hardening (the legacy PHP was blacklisted by iTunes):
+- Per-track cache keyed by normalized artist+title (`COVERART_CACHE_TTL`, default 6h).
+- Minimum interval between iTunes calls (`COVERART_MIN_INTERVAL`, default 2s).
+- Error cooldown after 403/429/5xx (`COVERART_ERROR_COOLDOWN`, default 5m).
+- Single-flight serialization of iTunes calls.
+
+### Cover-art environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `COVERART_ENABLED` | `false` | Master switch |
+| `COVERART_HUB_URL` | — | Hub base URL to push results to (e.g. `http://172.21.0.66:9000`) |
+| `COVERART_HUB_INPUT` | `radio-cover-art` | Hub dynamic input receiving the resolved URL |
+| `COVERART_HUB_SECRET` | — | Secret of that hub input (same value as in the hub's config.json) |
+| `COVERART_FALLBACK_IMAGE` | — | Station placeholder image |
+| `COVERART_WP_URL` | `SOURCE_URL` | WordPress metadata API for the show-avatar fallback |
+| `COVERART_ITUNES_COUNTRY` | `nl` | iTunes store country |
+| `COVERART_ITUNES_LIMIT` | `5` | Search results to score |
+| `COVERART_SPECIAL_TRIGGER` | — | Special-song title/text prefix (empty = disabled) |
+| `COVERART_SPECIAL_URL` | — | Special-song API returning `image_url` |
+| `COVERART_CACHE_TTL` | `6h` | Per-track cache lifetime |
+| `COVERART_MIN_INTERVAL` | `2s` | Min spacing between iTunes calls |
+| `COVERART_ERROR_COOLDOWN` | `5m` | iTunes error/rate-limit backoff |
+| `COVERART_MIN_MUSIC_SECONDS` | `120` | Minimum track length to treat as music |
 
 ## Docs
 

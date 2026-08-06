@@ -8,6 +8,14 @@ services:
       - JITTER=10s
       - PORT=8080
       - LOG_LEVEL=info
+      # Cover-art resolver (replaces cloud.hansvaneijsden.nl cover-art-salland1.php)
+      - COVERART_ENABLED=true
+      - COVERART_HUB_URL=http://172.21.0.66:9000
+      - COVERART_HUB_INPUT=radio-cover-art
+      - COVERART_HUB_SECRET=bestwelgeheim
+      - COVERART_FALLBACK_IMAGE=https://www.salland1.nl/wp-content/uploads/2026/02/Salland1-Programmering-Placeholder-1024x1024.jpg
+      - COVERART_SPECIAL_TRIGGER=Sallandschijf - 
+      - COVERART_SPECIAL_URL=https://www.salland1.nl/wp-json/salland1/v1/sallandschijf
     networks:
       metanet:
         ipv4_address: 172.21.0.91

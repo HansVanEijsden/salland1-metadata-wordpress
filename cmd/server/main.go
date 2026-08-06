@@ -12,6 +12,7 @@ import (
 
 	"salland1-metadata-wordpress/internal/cache"
 	"salland1-metadata-wordpress/internal/config"
+	"salland1-metadata-wordpress/internal/coverart"
 	"salland1-metadata-wordpress/internal/fetcher"
 	"salland1-metadata-wordpress/internal/handlers"
 	"salland1-metadata-wordpress/internal/logger"
@@ -29,11 +30,10 @@ func main() {
 		"fetch_interval", cfg.FetchInterval,
 		"jitter", cfg.Jitter)
 
-	// Initialize cache
-	cache := cache.New()
+	metadataCache := cache.New()
 
 	// Initialize fetcher
-	fetcher := fetcher.New(cfg.SourceURL, cfg.FetchInterval, cfg.Jitter, cache)
+	fetcher := fetcher.New(cfg.SourceURL, cfg.FetchInterval, cfg.Jitter, metadataCache)
 
 	// Start fetcher in background
 	ctx, cancel := context.WithCancel(context.Background())
@@ -42,7 +42,7 @@ func main() {
 	go fetcher.Start(ctx)
 
 	// Initialize HTTP handlers
-	handlers := handlers.New(cache, fetcher)
+	handlers := handlers.New(metadataCache, fetcher)
 
 	// Setup HTTP server
 	mux := http.NewServeMux()
@@ -55,6 +55,25 @@ func main() {
 	mux.HandleFunc("/radio-tv-host", handlers.RadioTvHost)
 	mux.HandleFunc("/radio-programme-excerpt", handlers.RadioProgrammeExcerpt)
 	mux.HandleFunc("/health", handlers.Health)
+
+	// Optional cover-art resolver (replaces the legacy PHP scripts on
+	// cloud.hansvaneijsden.nl). Disabled unless COVERART_ENABLED=true so the
+	// existing metadata endpoints are unaffected during rollout.
+	coverCfg := coverart.LoadConfig(cfg.SourceURL)
+	if coverCfg.Enabled {
+		resolver := coverart.New(coverCfg, metadataCache)
+		mux.HandleFunc("/cover-art", resolver.Handle)
+		mux.HandleFunc("/cover-art/current", resolver.Current)
+		slog.Info("Cover-art resolver enabled",
+			"hub_url", coverCfg.HubURL,
+			"hub_input", coverCfg.HubInput,
+			"special_trigger", coverCfg.SpecialTrigger,
+			"cache_ttl", coverCfg.CacheTTL,
+			"min_interval", coverCfg.MinInterval,
+		)
+	} else {
+		slog.Info("Cover-art resolver disabled (set COVERART_ENABLED=true to enable)")
+	}
 
 	// Add logging middleware
 	loggedMux := logger.HTTPLogger(mux)

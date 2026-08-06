@@ -11,6 +11,7 @@ type ParsedData struct {
 	NextShowName string
 	FmRdsPty     string
 	FmRdsPtyn    string
+	AvatarURL    string
 }
 
 func Parse(data interface{}) ParsedData {
@@ -45,6 +46,10 @@ func Parse(data interface{}) ParsedData {
 						}
 					}
 				}
+			}
+			// Parse show avatar URL (used by the cover-art resolver)
+			if avatarURL, ok := show["avatar_url"].(string); ok {
+				result.AvatarURL = avatarURL
 			}
 		}
 
