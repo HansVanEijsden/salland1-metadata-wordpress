@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           LAT=$(curl -fsSL "https://hub.docker.com/v2/repositories/library/golang/tags?name=1&page_size=100&ordering=last_updated" \
-            | python3 -c "import sys,json,re; tags=[t['name'] for t in json.load(sys.stdin)['results']]; f=[t for t in tags if re.fullmatch(r'1\.\d+-alpine',t)]; print(sorted(f,key=lambda x:[int(i) for i in x.split('-')[0].split('.')])[-1])")
+            | python3 -c "import sys,json,re; tags=[t['name'] for t in json.load(sys.stdin)['results']]; f=[t for t in tags if re.fullmatch(r'1\.\d+-alpine',t)]; print(sorted(f,key=lambda x:[int(i) for i in x.split('-')[0].split('.')])[-1].split('-')[0])")
           echo "image_latest=$LAT" >> "$GITHUB_OUTPUT"
 
       - name: Apply bump and open/update PR
@@ -46,7 +46,7 @@ jobs:
           set -euo pipefail
           cd "$GITHUB_WORKSPACE"
 
-          CUR=$(sed -n 's/^FROM golang:\([0-9.]*\)-alpine/\1/p' Dockerfile | head -1)
+          CUR=$(sed -n 's/^FROM golang:\([0-9.]*\)-alpine.*/\1/p' Dockerfile | head -1)
           if [[ -z "${IMG_LATEST:-}" || "$IMG_LATEST" == "$CUR" ]]; then
             echo "Niets te doen: golang=$CUR (actueel)."
             exit 0
