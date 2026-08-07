@@ -18,6 +18,8 @@ docker compose up -d     # runs with compose.yaml (uses external "metanet" netwo
 
 CI (`.github/workflows/ci.yml`) runs `go mod verify`, `go vet`, `gofmt` check, tests with `-race`, and build — keep these green. Dependabot minor/patch PRs and the golang base-image update bot auto-merge (squash) via `.github/workflows/dependabot-automerge.yml`; majors and non-dependency changes wait for human review.
 
+Deploy: Dockhand on the rtv host redeploys on push. A failed build showing `Image <stack>-<svc> Building` is the known Hawser `REQUEST_TIMEOUT` (30s default) killing cold builds — fixed host-side via `REQUEST_TIMEOUT=300` in `/etc/hawser/config` + `systemctl restart hawser`; fallback is building manually on rtv (`docker compose build && docker compose up -d`).
+
 ## Architecture
 
 Standard library only. Module path: `salland1-metadata-wordpress`.
@@ -43,6 +45,8 @@ Standard library only. Module path: `salland1-metadata-wordpress`.
 - **Stable HTTP contract**: endpoint paths and plain-text formats are consumed by external radio middleware — don't change response formats casually.
 - **JSON number handling**: Go's `encoding/json` unmarshals numbers as `float64`; parser explicitly handles int/float64 cases — keep this in mind when adding fields.
 - Go version is 1.26 (`go.mod`); CI pins `go-version: '1.26'`.
+- **Git hygiene**: never commit the compiled `server` binary or scratch files — `.gitignore` already covers `/server`, `.venv/`, `.DS_Store`.
+- **Special-override excerpts**: `/radio-programme-excerpt` returns `204` while a special override show ("Specials", post type `radio_override`) is on air, because the upstream Radio Station plugin never exposes description/excerpt for overrides. This is a plugin gap, not a regression — don't re-diagnose it.
 
 ## Cover-art resolver
 

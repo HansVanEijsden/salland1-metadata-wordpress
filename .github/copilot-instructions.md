@@ -13,6 +13,8 @@ Go service: polls a WordPress metadata API, caches in memory, serves plain-text 
 - **Thread safety**: anything shared with the fetch goroutine (cache, fetcher state) must be mutex-protected.
 - **Stable HTTP contract**: endpoint paths and plain-text formats are consumed by external middleware — don't change them casually.
 - **JSON numbers** parse as `float64` in Go; `internal/parser` handles int/float64 explicitly — keep that pattern when adding fields.
+- **Git hygiene**: never commit the compiled `server` binary or build artifacts.
+- **Known non-bugs** (details in `AGENTS.md`): `/radio-programme-excerpt` returns `204` during special overrides (upstream plugin gap); a failed Dockhand deploy with `Image … Building` is the Hawser `REQUEST_TIMEOUT` issue.
 
 ## Editing patterns
 
