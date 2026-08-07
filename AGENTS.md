@@ -59,6 +59,11 @@ Resolution order:
 3. Current show avatar from the already-cached WordPress metadata (no extra HTTP call).
 4. `COVERART_FALLBACK_IMAGE` placeholder.
 
+Matching (two-pass search):
+1. Primary search on "artist - title" (`entity=song`) with hard artist (≥ 0.7) and title (≥ 0.5) gates — a strong title can no longer mask a wrong artist, and vice versa.
+2. Title-only rescue pass when the primary yields nothing strong — but it still refuses a clearly different artist (≥ 0.45 artist, ≥ 0.85 title), so karaoke/cover versions never win.
+Compilation albums (multi-artist "Various Artists" collections — English and Dutch — plus single-artist greatest-hits/best-of/box-set titles) and non-original versions (remix/edit/live/instrumental/...) are penalised, so the artist's actual album cover beats compilation/remix covers. A `COVERART_ITUNES_LIMIT` of 15 candidates per pass makes it likely the proper album is in the pool.
+
 Anti-rate-limit hardening (the legacy PHP was blacklisted by iTunes):
 - Per-track cache keyed by normalized artist+title (`COVERART_CACHE_TTL`, default 6h).
 - Minimum interval between iTunes calls (`COVERART_MIN_INTERVAL`, default 2s).
@@ -76,11 +81,11 @@ Anti-rate-limit hardening (the legacy PHP was blacklisted by iTunes):
 | `COVERART_FALLBACK_IMAGE` | — | Station placeholder image |
 | `COVERART_WP_URL` | `SOURCE_URL` | WordPress metadata API for the show-avatar fallback |
 | `COVERART_ITUNES_COUNTRY` | `nl` | iTunes store country |
-| `COVERART_ITUNES_LIMIT` | `5` | Search results to score |
+| `COVERART_ITUNES_LIMIT` | `15` | Search results to score per pass |
 | `COVERART_SPECIAL_TRIGGER` | — | Special-song title/text prefix (empty = disabled) |
 | `COVERART_SPECIAL_URL` | — | Special-song API returning `image_url` |
 | `COVERART_CACHE_TTL` | `6h` | Per-track cache lifetime |
-| `COVERART_MIN_INTERVAL` | `2s` | Min spacing between iTunes calls |
+| `COVERART_MIN_INTERVAL` | `3s` | Min spacing between iTunes calls |
 | `COVERART_ERROR_COOLDOWN` | `5m` | iTunes error/rate-limit backoff |
 | `COVERART_MIN_MUSIC_SECONDS` | `120` | Minimum track length to treat as music |
 

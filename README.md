@@ -58,9 +58,9 @@ Environment variables:
 
 Optional album-art resolver (replaces the legacy PHP scripts on cloud.hansvaneijsden.nl), enabled with `COVERART_ENABLED=true`. The metadata hub POSTs each track to `POST /cover-art`; the resolver picks album art and pushes it back to the hub's `radio-cover-art` dynamic input, which the hub serves via `/ws/radio-cover-website`. `GET /cover-art/current` returns the last resolved URL (debugging / polling input).
 
-Resolution order: **special song** (e.g. Sallandschijf, configurable) → **iTunes** (fuzzy match, ≥ 120s track) → **show avatar** (from the already-cached WordPress metadata) → **fallback image**.
+Resolution order: **special song** (e.g. Sallandschijf, configurable) → **iTunes** (artist + title matching with compilation/remix penalties, ≥ 120s track) → **show avatar** (from the already-cached WordPress metadata) → **fallback image**.
 
-Anti-rate-limit protection: per-track cache (6h), minimum 2s between iTunes calls, and a 5m cooldown after 403/429/5xx errors.
+Anti-rate-limit protection: per-track cache (6h), minimum 3s between iTunes calls, and a 5m cooldown after 403/429/5xx errors.
 
 Relevant env vars (all prefixed `COVERART_`): `HUB_URL`, `HUB_INPUT`, `HUB_SECRET`, `FALLBACK_IMAGE`, `SPECIAL_TRIGGER`, `SPECIAL_URL`, `ITUNES_COUNTRY`, `ITUNES_LIMIT`, `CACHE_TTL`, `MIN_INTERVAL`, `ERROR_COOLDOWN`, `MIN_MUSIC_SECONDS`. See `AGENTS.md` for the full table.
 

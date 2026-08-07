@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -372,5 +373,201 @@ func TestITunesCooldownOnRateLimit(t *testing.T) {
 
 	if calls != 1 {
 		t.Fatalf("expected iTunes to be called once during cooldown, got %d calls", calls)
+	}
+}
+
+func TestNormalizeArtist(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"Dua Lipa feat. DaBaby", "dua lipa"},
+		{"Dua Lipa ft. DaBaby", "dua lipa"},
+		{"Ed Sheeran featuring Justin Bieber", "ed sheeran"},
+		{"The Police", "police"},
+		{"The Beatles [Remastered]", "beatles"},
+		{"AC/DC", "ac dc"},
+		{"Simon & Garfunkel", "simon and garfunkel"},
+		{"Café de la Paix", "café de la paix"},
+	}
+	for _, c := range cases {
+		if got := normalizeArtist(c.in); got != c.want {
+			t.Errorf("normalizeArtist(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestArtistSimilarity(t *testing.T) {
+	if s := artistSimilarity("Dua Lipa", "Dua Lipa feat. DaBaby"); s != 1.0 {
+		t.Errorf("feat. clause should not lower artist similarity, got %v", s)
+	}
+	if s := artistSimilarity("The Police", "Police"); s != 1.0 {
+		t.Errorf("leading 'The' should be ignored, got %v", s)
+	}
+	if s := artistSimilarity("Simon & Garfunkel", "Simon And Garfunkel"); s < 0.95 {
+		t.Errorf("& and 'and' should match closely, got %v", s)
+	}
+	if s := artistSimilarity("ABBA", "The Rolling Stones"); s >= artistMinMatch {
+		t.Errorf("unrelated artists scored above the gate: %v", s)
+	}
+}
+
+func TestCompilationFactor(t *testing.T) {
+	check := func(name string, f, want float64) {
+		t.Helper()
+		if math.Abs(f-want) > 1e-9 {
+			t.Errorf("%s factor = %v, want %v", name, f, want)
+		}
+	}
+	single := iTunesResult{ArtistName: "ABBA", CollectionArtistName: "ABBA", CollectionName: "Arrival", TrackCount: 10}
+	check("single-artist album", compilationFactor(single), 1.0)
+	comp := iTunesResult{ArtistName: "ABBA", CollectionArtistName: "Various Artists"}
+	check("various-artists", compilationFactor(comp), 0.6)
+	dutch := iTunesResult{ArtistName: "ABBA", CollectionArtistName: "Verschillende artiesten"}
+	check("dutch various-artists", compilationFactor(dutch), 0.6)
+	multi := iTunesResult{ArtistName: "ABBA", CollectionArtistName: "Benny Andersson & Meryl Streep"}
+	check("multi-artist album", compilationFactor(multi), 0.8)
+	greatestHits := iTunesResult{ArtistName: "ABBA", CollectionName: "ABBA Gold: Greatest Hits (40th Anniversary Edition)", TrackCount: 19}
+	check("greatest-hits name + track count", compilationFactor(greatestHits), 0.72)
+	boxSet := iTunesResult{ArtistName: "ABBA", CollectionName: "Thank You For The Music", TrackCount: 163}
+	check("box set", compilationFactor(boxSet), 0.7)
+	unknown := iTunesResult{ArtistName: "ABBA"}
+	check("unknown collection", compilationFactor(unknown), 1.0)
+}
+
+func TestVersionFactor(t *testing.T) {
+	if f := versionFactor("Blinding Lights (Remix)", "Blinding Lights"); f != 0.65 {
+		t.Errorf("remix should be penalised, got %v", f)
+	}
+	if f := versionFactor("Blinding Lights", "Blinding Lights"); f != 1.0 {
+		t.Errorf("original should not be penalised, got %v", f)
+	}
+	if f := versionFactor("Blinding Lights (Remix)", "Blinding Lights (Remix)"); f != 1.0 {
+		t.Errorf("query already a remix should not be penalised, got %v", f)
+	}
+	if f := versionFactor("Live Is Life", "Live Is Life"); f != 1.0 {
+		t.Errorf("'Live Is Life' should not be treated as a live version, got %v", f)
+	}
+	if f := versionFactor("Song - Live", "Song"); f != 0.65 {
+		t.Errorf("' - live' suffix should be penalised, got %v", f)
+	}
+}
+
+func TestScoreCandidateGates(t *testing.T) {
+	wrongArtist := iTunesResult{ArtistName: "The Rolling Stones", TrackName: "Dancing Queen", CollectionArtistName: "The Rolling Stones", ArtworkURL100: "http://x/wrong.jpg"}
+	if _, ok := scoreCandidate(wrongArtist, "ABBA", "Dancing Queen"); ok {
+		t.Error("wrong artist must be rejected even with a perfect title match")
+	}
+	wrongSong := iTunesResult{ArtistName: "ABBA", TrackName: "Mamma Mia", CollectionArtistName: "ABBA", ArtworkURL100: "http://x/wrong.jpg"}
+	if _, ok := scoreCandidate(wrongSong, "ABBA", "Dancing Queen"); ok {
+		t.Error("wrong song by the right artist must be rejected")
+	}
+	right := iTunesResult{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionArtistName: "ABBA", ArtworkURL100: "http://x/right.jpg"}
+	if _, ok := scoreCandidate(right, "ABBA", "Dancing Queen"); !ok {
+		t.Error("correct artist+song should be accepted")
+	}
+}
+
+func TestBestCandidatePrefersAlbumOverCompilation(t *testing.T) {
+	results := []iTunesResult{
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionArtistName: "Various Artists", ArtworkURL100: "http://x/comp.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionArtistName: "ABBA", ArtworkURL100: "http://x/album.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen (Remix)", CollectionArtistName: "ABBA", ArtworkURL100: "http://x/remix.jpg"},
+	}
+	best, _, ok := bestCandidate(results, "ABBA", "Dancing Queen")
+	if !ok {
+		t.Fatal("expected a candidate")
+	}
+	if !strings.Contains(best.ArtworkURL100, "album.jpg") {
+		t.Fatalf("expected the single-artist album cover to win, got %q", best.ArtworkURL100)
+	}
+}
+
+func TestBestCandidateRealDancingQueenPool(t *testing.T) {
+	// Real iTunes (nl) result pool for "ABBA - Dancing Queen" captured
+	// 2026-08-08. The original album "Arrival" must beat the greatest-hits,
+	// live, box-set and soundtrack versions that iTunes ranks above it.
+	pool := []iTunesResult{
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionName: "ABBA Gold: Greatest Hits (40th Anniversary Edition)", TrackCount: 19, ArtworkURL100: "http://x/gold40.jpg"},
+		{ArtistName: "Meryl Streep, Julie Walters & Christine Baranski", TrackName: "Dancing Queen", CollectionName: "Mamma Mia! (The Movie Soundtrack)", TrackCount: 22, ArtworkURL100: "http://x/mamma.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen (Live)", CollectionName: "Live at Wembley Arena", TrackCount: 20, ArtworkURL100: "http://x/live.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionName: "Thank You For The Music", TrackCount: 163, ArtworkURL100: "http://x/box.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionName: "The Singles (The First Fifty Years)", TrackCount: 56, ArtworkURL100: "http://x/singles.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionName: "70s Mixtape", CollectionArtistName: "Verschillende artiesten", TrackCount: 40, ArtworkURL100: "http://x/mixtape.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionName: "ABBA Gold: Greatest Hits", TrackCount: 19, ArtworkURL100: "http://x/gold.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionName: "The Essential Collection", TrackCount: 30, ArtworkURL100: "http://x/essential.jpg"},
+		{ArtistName: "ABBA", TrackName: "Dancing Queen", CollectionName: "Arrival (Bonus Track Version)", TrackCount: 10, ArtworkURL100: "http://x/arrival.jpg"},
+	}
+	best, _, ok := bestCandidate(pool, "ABBA", "Dancing Queen")
+	if !ok {
+		t.Fatal("expected a candidate from the real pool")
+	}
+	if !strings.Contains(best.ArtworkURL100, "arrival.jpg") {
+		t.Fatalf("expected the original Arrival album cover to win, got %q (%s)", best.ArtworkURL100, best.CollectionName)
+	}
+}
+
+func TestSearchITunesTitleRescue(t *testing.T) {
+	var calls []string
+	rt := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		term := r.URL.Query().Get("term")
+		calls = append(calls, term)
+		// Primary ("artist - title") finds nothing; the title-only rescue does.
+		if strings.Contains(term, "-") {
+			return jsonResponse(200, `{"resultCount":0,"results":[]}`), nil
+		}
+		return jsonResponse(200, itunesResultsJSON("Dua Lipa", "Dance The Night", "http://is1.mzstatic.com/100x100bb.jpg")), nil
+	})
+	r := newTestResolver(rt, "")
+	r.cfg.ITunesLimit = 10
+
+	url, err := r.searchITunes("Dua Lipa", "Dance The Night", "Dua Lipa - Dance The Night")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(url, "600x600bb") {
+		t.Fatalf("expected artwork via title rescue, got %q", url)
+	}
+	if len(calls) != 2 {
+		t.Fatalf("expected primary + rescue pass, got %d calls (%v)", len(calls), calls)
+	}
+}
+
+func TestSearchITunesRescueBlocksDifferentArtist(t *testing.T) {
+	rt := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		term := r.URL.Query().Get("term")
+		if strings.Contains(term, "-") {
+			return jsonResponse(200, `{"resultCount":0,"results":[]}`), nil
+		}
+		// A karaoke/cover artist with an exact title must NOT be rescued.
+		return jsonResponse(200, itunesResultsJSON("Karaoke All-Stars", "Dancing Queen", "http://is1.mzstatic.com/100x100bb.jpg")), nil
+	})
+	r := newTestResolver(rt, "")
+	r.cfg.ITunesLimit = 10
+
+	url, err := r.searchITunes("ABBA", "Dancing Queen", "ABBA - Dancing Queen")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if url != "" {
+		t.Fatalf("different-artist cover must not be rescued, got %q", url)
+	}
+}
+
+func TestSearchITunesStopsAfterStrongPrimary(t *testing.T) {
+	calls := 0
+	rt := roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		calls++
+		return jsonResponse(200, itunesResultsJSON("ABBA", "Dancing Queen", "http://is1.mzstatic.com/100x100bb.jpg")), nil
+	})
+	r := newTestResolver(rt, "")
+	r.cfg.ITunesLimit = 10
+
+	url, err := r.searchITunes("ABBA", "Dancing Queen", "ABBA - Dancing Queen")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(url, "600x600bb") {
+		t.Fatalf("expected artwork from strong primary match, got %q", url)
+	}
+	if calls != 1 {
+		t.Fatalf("expected a single API call for a strong match, got %d", calls)
 	}
 }

@@ -36,11 +36,11 @@ func LoadConfig(wpURL string) *Config {
 		FallbackImage:   getEnv("COVERART_FALLBACK_IMAGE", ""),
 		WPURL:           getEnv("COVERART_WP_URL", wpURL),
 		ITunesCountry:   getEnv("COVERART_ITUNES_COUNTRY", "nl"),
-		ITunesLimit:     getEnvInt("COVERART_ITUNES_LIMIT", 5),
+		ITunesLimit:     getEnvInt("COVERART_ITUNES_LIMIT", 15),
 		SpecialTrigger:  getEnv("COVERART_SPECIAL_TRIGGER", ""),
 		SpecialURL:      getEnv("COVERART_SPECIAL_URL", ""),
 		CacheTTL:        getEnvDuration("COVERART_CACHE_TTL", 6*time.Hour),
-		MinInterval:     getEnvDuration("COVERART_MIN_INTERVAL", 2*time.Second),
+		MinInterval:     getEnvDuration("COVERART_MIN_INTERVAL", 3*time.Second),
 		ErrorCooldown:   getEnvDuration("COVERART_ERROR_COOLDOWN", 5*time.Minute),
 		MinMusicSeconds: getEnvInt("COVERART_MIN_MUSIC_SECONDS", 120),
 	}
