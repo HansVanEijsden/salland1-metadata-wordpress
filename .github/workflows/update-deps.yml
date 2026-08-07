@@ -48,7 +48,7 @@ jobs:
 
           CUR=$(sed -n 's/^FROM golang:\([0-9.]*\)-alpine.*/\1/p' Dockerfile | head -1)
           if [[ -z "${IMG_LATEST:-}" || "$IMG_LATEST" == "$CUR" ]]; then
-            echo "Niets te doen: golang=$CUR (actueel)."
+            echo "Nothing to do: golang=$CUR (current)."
             exit 0
           fi
 
@@ -56,30 +56,30 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # De repo-ruleset blokkeert force-push (non_fast_forward) en
-          # branch-verwijdering (deletion). Hergebruik de branch met
-          # fast-forward-only pushes: merge main erin, bump-commit erbovenop.
+          # The repo ruleset blocks force-push (non_fast_forward) and branch
+          # deletion. Reuse the branch with fast-forward-only pushes: merge
+          # main into it, then add the bump commit on top.
           if git ls-remote --heads origin "$BRANCH" | grep -q "$BRANCH"; then
-            echo "Branch $BRANCH bestaat; synchroniseren met main."
+            echo "Branch $BRANCH exists; syncing with main."
             git fetch origin "$BRANCH" origin/main
             git checkout -B "$BRANCH" "origin/$BRANCH"
-            git merge --no-edit origin/main || { echo "Merge-conflict met main; abort."; git merge --abort; exit 1; }
+            git merge --no-edit origin/main || { echo "Merge conflict with main; aborting."; git merge --abort; exit 1; }
           else
-            echo "Nieuwe branch $BRANCH vanaf main."
+            echo "New branch $BRANCH from main."
             git checkout -b "$BRANCH" origin/main
           fi
 
           sed -i "s#^FROM golang:${CUR}-alpine#FROM golang:${IMG_LATEST}-alpine#" Dockerfile
           git add Dockerfile
           git commit -m "chore(deps): bump golang builder to ${IMG_LATEST}-alpine"
-          git push origin "$BRANCH" || { echo "Push geweigerd (ruleset?)."; exit 1; }
+          git push origin "$BRANCH" || { echo "Push rejected (ruleset?)."; exit 1; }
 
           TITLE="chore(deps): golang ${CUR}-alpine -> ${IMG_LATEST}-alpine"
-          BODY=$(printf 'Automatische update door de update-base-image workflow.\n\n- golang builder: golang:%s-alpine -> golang:%s-alpine\n\nDe auto-merge workflow merged dit automatisch (squash).' "$CUR" "$IMG_LATEST")
+          BODY=$(printf 'Automatic update by the update-base-image workflow.\n\n- golang builder: golang:%s-alpine -> golang:%s-alpine\n\nThe auto-merge workflow merges this automatically (squash).' "$CUR" "$IMG_LATEST")
           if gh pr view "$BRANCH" --json number --jq .number >/dev/null 2>&1; then
             gh pr edit "$BRANCH" --title "$TITLE" --body "$BODY" --add-label dependencies
-            echo "Bestaande PR bijgewerkt (branch $BRANCH)."
+            echo "Existing PR updated (branch $BRANCH)."
           else
             gh pr create --base main --head "$BRANCH" --title "$TITLE" --body "$BODY" --label dependencies
-            echo "Nieuwe PR aangemaakt (branch $BRANCH)."
+            echo "New PR created (branch $BRANCH)."
           fi
