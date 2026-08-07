@@ -16,21 +16,8 @@ updates:
         patterns:
           - "*"
 
-  # Docker updates
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-    commit-message:
-      prefix: "chore"
-    groups:
-      docker:
-        patterns:
-          - "*"
+  # Docker updates are handled by the update-base-deps workflow
+  # (deterministic, no Dependabot rate limits).
 
   # GitHub Actions updates
   - package-ecosystem: "github-actions"
