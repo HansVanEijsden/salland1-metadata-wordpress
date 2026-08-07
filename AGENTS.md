@@ -2,6 +2,10 @@
 
 A small Go HTTP service that polls a WordPress metadata API, caches the response in memory, and serves plain-text endpoints for radio middleware. Uses only the standard library (no third-party deps).
 
+## Twin repository
+
+This repo is the functional twin of **1zwolle-metadata-wordpress** — the two Go services are identical except for: module path, `SOURCE_URL` host, station branding strings in `internal/handlers`, compose `container_name`/IP, test route URLs, and the `COVERART_HUB_URL` example. Make each change **once**, then mirror it to the sibling adapting only those bits. Both repos are **public** on GitHub — never commit credentials, keep comments/log messages English-only, and don't add client-specific (hosting customer) names.
+
 ## Commands
 
 ```bash
@@ -12,7 +16,7 @@ go build -v ./cmd/server
 docker compose up -d     # runs with compose.yaml (uses external "metanet" network)
 ```
 
-CI (`.github/workflows/ci.yml`) runs `go mod verify`, `go vet`, `gofmt` check, tests with `-race`, and build — keep these green.
+CI (`.github/workflows/ci.yml`) runs `go mod verify`, `go vet`, `gofmt` check, tests with `-race`, and build — keep these green. Dependabot minor/patch PRs and the golang base-image update bot auto-merge (squash) via `.github/workflows/dependabot-automerge.yml`; majors and non-dependency changes wait for human review.
 
 ## Architecture
 
